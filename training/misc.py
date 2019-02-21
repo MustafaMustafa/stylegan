@@ -142,6 +142,9 @@ def locate_network_pkl(run_id_or_run_dir_or_network_pkl, snapshot_or_network_pkl
         except IndexError: pass
     raise IOError('Cannot locate network pkl for snapshot', snapshot_or_network_pkl)
 
+def get_resume_kimg(network_pkl):
+    return int(network_pkl[network_pkl.rfind("-")+1:network_pkl.rfind(".pkl")])
+
 def get_id_string_for_network_pkl(network_pkl):
     p = network_pkl.replace('.pkl', '').replace('\\', '/').split('/')
     return '-'.join(p[max(len(p) - 2, 0):])

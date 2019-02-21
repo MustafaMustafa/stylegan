@@ -149,6 +149,7 @@ def training_loop(
     with tf.device('/gpu:0'):
         if resume_run_id is not None:
             network_pkl = misc.locate_network_pkl(resume_run_id, resume_snapshot)
+            resume_kimg = misc.get_resume_kimg(network_pkl)
             print('Loading networks from "%s"...' % network_pkl)
             G, D, Gs = misc.load_pkl(network_pkl)
         else:

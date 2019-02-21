@@ -164,15 +164,19 @@ def _create_run_dir_local(submit_config: SubmitConfig) -> str:
         print("Creating the run dir root: {}".format(run_dir_root))
         os.makedirs(run_dir_root)
 
-    submit_config.run_id = _get_next_run_id_local(run_dir_root)
+    create_dir = False
+    if submit_config.run_id is None:
+        submit_config.run_id = _get_next_run_id_local(run_dir_root)
+        create_dir = True
     submit_config.run_name = "{0:05d}-{1}".format(submit_config.run_id, submit_config.run_desc)
     run_dir = os.path.join(run_dir_root, submit_config.run_name)
 
-    if os.path.exists(run_dir):
-        raise RuntimeError("The run dir already exists! ({0})".format(run_dir))
+    if create_dir:
+        if os.path.exists(run_dir):
+            raise RuntimeError("The run dir already exists! ({0})".format(run_dir))
 
-    print("Creating the run dir: {}".format(run_dir))
-    os.makedirs(run_dir)
+        print("Creating the run dir: {}".format(run_dir))
+        os.makedirs(run_dir)
 
     return run_dir
 
@@ -272,10 +276,17 @@ def submit_run(submit_config: SubmitConfig, run_func_name: str, **run_func_kwarg
 
     assert submit_config.submit_target == SubmitTarget.LOCAL
     if submit_config.submit_target in {SubmitTarget.LOCAL}:
+
+        # populate_dir = False
+        # if submit_config.run_id is None:
+            # populate_dir = True
+
         run_dir = _create_run_dir_local(submit_config)
 
         submit_config.task_name = "{0}-{1:05d}-{2}".format(submit_config.user_name, submit_config.run_id, submit_config.run_desc)
         submit_config.run_dir = run_dir
+
+        # if populate_dir:
         _populate_run_dir(run_dir, submit_config)
 
     if submit_config.print_info:

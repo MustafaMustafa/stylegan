@@ -63,7 +63,7 @@ class TFRecordExporter:
         np.random.RandomState(123).shuffle(order)
         return order
 
-    def add_image(self, img):
+    def add_image(self, img, real_image=True):
         if self.print_progress and self.cur_images % self.progress_interval == 0:
             print('%d / %d\r' % (self.cur_images, self.expected_images), end='', flush=True)
         if self.shape is None:
@@ -81,10 +81,12 @@ class TFRecordExporter:
             if lod:
                 img = img.astype(np.float32)
                 img = (img[:, 0::2, 0::2] + img[:, 0::2, 1::2] + img[:, 1::2, 0::2] + img[:, 1::2, 1::2]) * 0.25
-            quant = np.rint(img).clip(0, 255).astype(np.uint8)
+
+            if real_image:
+                quant = np.rint(img).clip(0, 255).astype(np.uint8)
             ex = tf.train.Example(features=tf.train.Features(feature={
-                'shape': tf.train.Feature(int64_list=tf.train.Int64List(value=quant.shape)),
-                'data': tf.train.Feature(bytes_list=tf.train.BytesList(value=[quant.tostring()]))}))
+                'shape': tf.train.Feature(int64_list=tf.train.Int64List(value=img.shape)),
+                'data': tf.train.Feature(bytes_list=tf.train.BytesList(value=[quant.tostring() if real_image else img.tostring()]))}))
             tfr_writer.write(ex.SerializeToString())
         self.cur_images += 1
 
@@ -543,7 +545,7 @@ def create_from_hdf5(tfrecord_dir, hdf5_filename, shuffle):
 
 #----------------------------------------------------------------------------
 
-def create_from_numpy(tfrecord_dir, numpy_filename, shuffle):
+def create_from_numpy(tfrecord_dir, numpy_filename, shuffle, real_images):
 
     all_arr = np.load(numpy_filename, mmap_mode='r')
 
@@ -566,7 +568,7 @@ def create_from_numpy(tfrecord_dir, numpy_filename, shuffle):
                 img = img[np.newaxis, :, :] # HW => CHW
             elif is_HWC:
                 img = img.transpose([2, 0, 1]) # HWC => CHW
-            tfr.add_image(img)
+            tfr.add_image(img, real_images)
 
 #----------------------------------------------------------------------------
 
@@ -664,6 +666,7 @@ def execute_cmdline(argv):
     p.add_argument(     'tfrecord_dir',     help='New dataset directory to be created')
     p.add_argument(     'numpy_filename',    help='numpy array file containing the images')
     p.add_argument(     '--shuffle',        help='Randomize image order (default: 1)', type=int, default=1)
+    p.add_argument(     '--real_images',    help='Quantize pixel values for real_images (default: 1)', type=int, default=1)
 
     args = parser.parse_args(argv[1:] if len(argv) > 1 else ['-h'])
     func = globals()[args.command]

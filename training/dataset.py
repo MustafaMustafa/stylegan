@@ -17,11 +17,14 @@ import dnnlib.tflib as tflib
 #----------------------------------------------------------------------------
 # Parse individual image from a tfrecords file.
 
+TF_DTYPE = tf.uint8
+NP_DTYPE = np.uint8
+
 def parse_tfrecord_tf(record):
     features = tf.parse_single_example(record, features={
         'shape': tf.FixedLenFeature([3], tf.int64),
         'data': tf.FixedLenFeature([], tf.string)})
-    data = tf.decode_raw(features['data'], tf.uint8)
+    data = tf.decode_raw(features['data'], TF_DTYPE)
     return tf.reshape(data, features['shape'])
 
 def parse_tfrecord_np(record):
@@ -29,7 +32,7 @@ def parse_tfrecord_np(record):
     ex.ParseFromString(record)
     shape = ex.features.feature['shape'].int64_list.value # temporary pylint workaround # pylint: disable=no-member
     data = ex.features.feature['data'].bytes_list.value[0] # temporary pylint workaround # pylint: disable=no-member
-    return np.fromstring(data, np.uint8).reshape(shape)
+    return np.fromstring(data, NP_DTYPE).reshape(shape)
 
 #----------------------------------------------------------------------------
 # Dataset class that loads data from tfrecords files.
@@ -39,6 +42,7 @@ class TFRecordDataset:
         tfrecord_dir,               # Directory containing a collection of tfrecords files.
         resolution      = None,     # Dataset resolution, None = autodetect.
         label_file      = None,     # Relative path of the labels file, None = autodetect.
+        dtype           = 'uint8',  # Data type
         max_label_size  = 0,        # 0 = no labels, 'full' = full labels, <int> = N first label components.
         repeat          = True,     # Repeat dataset indefinitely.
         shuffle_mb      = 4096,     # Shuffle data within specified window (megabytes), 0 = disable shuffling.
@@ -50,7 +54,7 @@ class TFRecordDataset:
         self.resolution         = None
         self.resolution_log2    = None
         self.shape              = []        # [channel, height, width]
-        self.dtype              = 'uint8'
+        self.dtype              = dtype
         self.dynamic_range      = [0, 255]
         self.label_file         = label_file
         self.label_size         = None      # [component]
@@ -65,6 +69,14 @@ class TFRecordDataset:
         self._tf_minibatch_np   = None
         self._cur_minibatch     = -1
         self._cur_lod           = -1
+
+        # Set global dtypes
+        if dtype != 'uint8':
+            global TF_DTYPE
+            global NP_DTYPE
+            if dtype == 'float32':
+                TF_DTYPE = tf.float32
+                NP_DTYPE = np.float32
 
         # List tfrecords files and inspect their shapes.
         assert os.path.isdir(self.tfrecord_dir)

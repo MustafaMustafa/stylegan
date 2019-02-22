@@ -33,9 +33,9 @@ if 1:
     submit_config = dnnlib.SubmitConfig()                                                  # Options for dnnlib.submit_run().
     tf_config     = {'rnd.np_random_seed': 1000}                                           # Options for tflib.init_tf().
 
-    #submit_config.run_id = 6
+    submit_config.run_id = 0
     train.network_snapshot_ticks = 1
-    ##train.resume_run_id = 6
+    train.resume_run_id = 0
 
     # Dataset.
     desc += '-ffhq';     dataset = EasyDict(tfrecord_dir='ffhq');                 train.mirror_augment = True

@@ -543,6 +543,33 @@ def create_from_hdf5(tfrecord_dir, hdf5_filename, shuffle):
 
 #----------------------------------------------------------------------------
 
+def create_from_numpy(tfrecord_dir, numpy_filename, shuffle):
+
+    all_arr = np.load(numpy_filename, mmap_mode='r')
+
+    img = all_arr[0]
+    resolution = img.shape[1]
+    channels = 3 if len(img.shape) == 3 else 1
+    if img.shape[0] != resolution:
+        error('Input images must have the same width and height')
+    if resolution != 2 ** int(np.floor(np.log2(resolution))):
+        error('Input image resolution must be a power-of-two')
+    if channels not in [1, 3]:
+        error('Input images must be stored as RGB or grayscale')
+
+    is_HWC = (channels == 3) and (img.shape[2] == 3)
+    with TFRecordExporter(tfrecord_dir, all_arr.shape[0]) as tfr:
+        order = tfr.choose_shuffled_order() if shuffle else np.arange(all_arr.shape[0])
+        for idx in range(order.size):
+            img = all_arr[order[idx]]
+            if channels == 1:
+                img = img[np.newaxis, :, :] # HW => CHW
+            elif is_HWC:
+                img = img.transpose([2, 0, 1]) # HWC => CHW
+            tfr.add_image(img)
+
+#----------------------------------------------------------------------------
+
 def execute_cmdline(argv):
     prog = argv[0]
     parser = argparse.ArgumentParser(
@@ -630,6 +657,12 @@ def execute_cmdline(argv):
                                             'create_from_hdf5 datasets/celebahq ~/downloads/celeba-hq-1024x1024.h5')
     p.add_argument(     'tfrecord_dir',     help='New dataset directory to be created')
     p.add_argument(     'hdf5_filename',    help='HDF5 archive containing the images')
+    p.add_argument(     '--shuffle',        help='Randomize image order (default: 1)', type=int, default=1)
+
+    p = add_command(    'create_from_numpy', 'Create dataset from numpy array.',
+                                             'create_from_numpy datasets/cosmo ~/downloads/cosmo.npy')
+    p.add_argument(     'tfrecord_dir',     help='New dataset directory to be created')
+    p.add_argument(     'numpy_filename',    help='numpy array file containing the images')
     p.add_argument(     '--shuffle',        help='Randomize image order (default: 1)', type=int, default=1)
 
     args = parser.parse_args(argv[1:] if len(argv) > 1 else ['-h'])

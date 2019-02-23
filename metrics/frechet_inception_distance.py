@@ -53,6 +53,8 @@ class FID(metric_base.MetricBase):
                 inception_clone = inception.clone()
                 latents = tf.random_normal([self.minibatch_per_gpu] + Gs_clone.input_shape[1:])
                 images = Gs_clone.get_output_for(latents, None, is_validation=True, randomize_noise=True)
+                if images.get_shape()[1] != 3:
+                    images = tf.tile(images, [1, 3, 1, 1])
                 images = tflib.convert_images_to_uint8(images)
                 result_expr.append(inception_clone.get_output_for(images))
 
